@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <clipPath id="rounded">
+      <rect x="4" y="4" width="120" height="120" rx="16" ry="16"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#rounded)">
+    <!-- Background - Squid Ink -->
+    <rect x="4" y="4" width="120" height="120" fill="#232F3E"/>
+
+    <!-- 5 horizon bars, graduated larger to smaller top-down, 3px dividers -->
+    <rect x="4" y="4"   width="120" height="32" fill="#F2C94C"/>
+    <rect x="4" y="39"  width="120" height="26" fill="#E09930"/>
+    <rect x="4" y="68"  width="120" height="22" fill="#C4501A"/>
+    <rect x="4" y="93"  width="120" height="17" fill="#A83520"/>
+    <rect x="4" y="113" width="120" height="11" fill="#4A1808"/>
+  </g>
+</svg>
