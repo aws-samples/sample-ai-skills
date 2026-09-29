@@ -1,0 +1,139 @@
+# ---------------------------------------------------------------------------
+# Public promotion. ONE manual job, whose NAME is the documentation.
+#
+#   public:promote   manual. Runs scripts/promote.sh. With no CONFIRM_TAG set it
+#                    reports what would ship and pushes nothing; with
+#                    CONFIRM_TAG equal to the tag it force-pushes the filtered
+#                    tree and the tag to the public target.
+#
+# So: click it once to read the report, then click it again with CONFIRM_TAG set
+# as a job variable. NO --dry-run FLAG IS PASSED, deliberately — omitting the
+# confirmation is what makes a run a dry run, and a job that passed the flag
+# would make the confirmation unreachable while its absence read as
+# authorization. The operator supplies CONFIRM_TAG at run time through GitLab's
+# "Run job" variable form; nothing here sets it, and nothing should.
+#
+# Manual on a BRANCH pipeline rather than chained off the release job: a
+# CI-pushed tag triggers no pipeline, so a tag-triggered promote job would
+# silently never fire.
+#
+# THIS IS A BASE. It declares no job dependency; see `needs:` below for the
+# one-line edit that adds one, and references/promote-extensions.md for which
+# removed checks belong there rather than in the gate hook.
+#
+# NOTE FOR THE REPOSITORY THAT SHIPS THIS SKILL: assets/promote.sh now HAS a root
+# counterpart, at internal/scripts/promote.sh rather than scripts/promote.sh —
+# that repository's scripts/ is becoming a published path, and promote.sh is the
+# one release script free to move. The asset/root equality check still does not
+# diff the pair: it compares three other files, so a change to assets/promote.sh
+# is checked against nothing. Adding the fourth comparison is what closes that.
+# ---------------------------------------------------------------------------
+.promote-base:
+  stage: release
+  image: public.ecr.aws/docker/library/python:3.12-bookworm
+  variables:
+    # Full history is required for two reasons that have nothing to do with
+    # ancestry — the base performs NO ancestry or divergence check, so do not
+    # read this as a prerequisite of one:
+    #   1. the TAG OBJECT and its annotation must be present, and the promotion
+    #      reuses that annotation byte for byte;
+    #   2. git's PACK NEGOTIATION otherwise references objects past the shallow
+    #      boundary, which the public remote rejects.
+    GIT_DEPTH: "0"
+  before_script:
+    # openssh-client is absent from the python image, and `git` over SSH needs
+    # it. Drop this and the whole block below if PUBLIC_TARGET is an HTTPS URL
+    # carrying a token instead — see the note at the end of this file.
+    - apt-get update -qq && apt-get install -y -qq git openssh-client >/dev/null
+    - git fetch origin --tags --force
+    # The host key is fetched for the host the CONFIGURATION names, never for a
+    # hardcoded forge. Hardcoding one is the single least portable line in this
+    # shape: the target may be a second internal forge or a different GitLab
+    # instance, and a promotion to it must not require editing this file.
+    - |
+      set -eu
+      # THE SSH SETUP RUNS ONLY WHEN A PUSH CAN HAPPEN.
+      #
+      # An absent CONFIRM_TAG is the dry run, and a dry run pushes nothing — so
+      # requiring a deploy key to reach it was wrong twice over. It made the
+      # report unreachable exactly when it is most wanted (before any credential
+      # exists, when a builder is checking what WOULD ship), and because this is
+      # before_script the job died before promote.sh printed a single line, while
+      # `allow_failure: false` turned the pipeline red for a read-only check.
+      #
+      # It also reached the network: ssh-keyscan contacted the PUBLIC TARGET on a
+      # run that pushes nothing. A dry run should touch nothing outside origin.
+      #
+      # Gating here makes the dry run's safety STRUCTURAL rather than a promise:
+      # with no key in the job at all, the run cannot push even if every later
+      # refusal were bypassed.
+      if [ -z "${CONFIRM_TAG:-}" ]; then
+        echo "no CONFIRM_TAG — this is a dry run; no key installed and no host contacted, so nothing can be pushed"
+        exit 0
+      fi
+      TARGET="$(sed -n 's/^PUBLIC_TARGET=//p' .promote-target | head -1)"
+      [ -n "$TARGET" ] || { echo "no PUBLIC_TARGET in .promote-target" >&2; exit 1; }
+      HOST="$(printf '%s' "$TARGET" | sed -e 's#^[a-zA-Z+]*://##' -e 's#^[^@]*@##' -e 's#[:/].*$##')"
+      # An unparseable target yields an empty HOST, which would make ssh-keyscan a
+      # no-op and leave known_hosts without a key for the target. On its own that
+      # is a refused push rather than a MITM — ssh will not accept an unknown host
+      # non-interactively — but whether it refuses depends on the runner image's
+      # StrictHostKeyChecking default, which an asset installed into an unknown
+      # repository cannot see. Refuse here instead of resting on it.
+      [ -n "$HOST" ] || { echo "could not derive a host from PUBLIC_TARGET: $TARGET" >&2; exit 1; }
+      [ -n "${PROMOTE_SSH_KEY:-}" ] || { echo "CONFIRM_TAG is set but PROMOTE_SSH_KEY is not — see the note at the foot of this file" >&2; exit 1; }
+      mkdir -p ~/.ssh
+      chmod 700 ~/.ssh
+      # ssh-keyscan exits 0 for a host it could not reach, so its status proves
+      # nothing. Collect first and assert the file is non-empty, rather than
+      # appending nothing to known_hosts and continuing.
+      ssh-keyscan -H "$HOST" > /tmp/promote-known-hosts
+      [ -s /tmp/promote-known-hosts ] || { echo "no host key fetched for $HOST" >&2; exit 1; }
+      cat /tmp/promote-known-hosts >> ~/.ssh/known_hosts
+      install -m 600 "$PROMOTE_SSH_KEY" ~/.ssh/id_ed25519
+
+# THE PROMOTION. allow_failure: false, unlike a preview job — this one can create
+# something on a remote nobody here controls, so a failure must be loud.
+#
+# The trailing `when: never` is not decoration: without it a pipeline shape the
+# rule above does not match falls through to GitLab's default, and the job
+# appears where it was never meant to.
+public:promote:
+  extends: .promote-base
+  rules:
+    # Once per push to the default branch, and never on the tag pipeline a
+    # release may create.
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_COMMIT_TAG == null
+      when: manual
+      allow_failure: false
+    - when: never
+  # No dependency by default. To gate the promotion on a scan the pipeline
+  # already runs, this becomes one line:
+  #
+  #     needs: [{ job: secret-detection }]
+  #
+  # If that job is contributed by an INCLUDED COMPONENT rather than declared in
+  # this file, it must be marked optional:
+  #
+  #     needs: [{ job: ash-sast, optional: true }]
+  #
+  # Omitting `optional: true` makes the whole pipeline INVALID — not merely
+  # ungated — in any pipeline where the component is not included, so the failure
+  # is every job refusing to start rather than the promotion running unchecked.
+  needs: []
+  script:
+    - bash scripts/promote.sh
+# ---------------------------------------------------------------------------
+# SSH versus HTTPS, unresolved on purpose.
+#
+# This asset ships the SSH form, which needs PROMOTE_SSH_KEY as a FILE-type CI
+# variable holding a deploy key with write access to the public target, and
+# port-22 egress from the runner. If egress is blocked or a key is not wanted,
+# replace the `before_script` SSH block with an HTTPS credential:
+#
+#     PUBLIC_TARGET=https://x-access-token:$PROMOTE_TOKEN@example.invalid/org/repo.git
+#
+# and drop openssh-client. Measuring port-22 egress is a one-job experiment and
+# belongs to whichever change first installs this job; it changes neither
+# scripts/promote.sh nor the routing.
+# ---------------------------------------------------------------------------

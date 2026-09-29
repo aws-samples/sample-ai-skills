@@ -1,0 +1,83 @@
+# ---------------------------------------------------------------------------
+# Internal release. Two manual jobs, whose NAMES are the documentation.
+#
+#   gitlab:release:preview   manual. Prints the version that would be cut and
+#                            the exact notes that would be published. Creates
+#                            NOTHING — no tag, no branch, no Release object.
+#   gitlab:release           manual. Derives, asserts, tags origin, creates the
+#                            GitLab Release. This is the release.
+#
+# So: click preview, read the notes, click release. The preview is a
+# voluntary pre-flight, not a gate — nothing blocks a release on having run it.
+#
+# There is NO automatic tag-on-merge, no release branch, no release merge
+# request, and no separate job for a major version. Releasing is a deliberate
+# click. Both jobs call scripts/release.sh, so the preview cannot report notes
+# that differ from what a release publishes, and the script's absence-on-origin
+# assertion means repeated clicks cannot double-tag.
+#
+# A MAJOR version bump is refused unless CONFIRM_VERSION equals the derived
+# tag. The guard is keyed on the version's SHAPE rather than on commit text, so
+# it holds after 1.0 as well.
+#
+# NOTHING PUSHES A BRANCH. That is why no `git remote set-url --push` appears
+# below.
+#
+# Publishing to a public remote, if one is ever configured, is a separate,
+# deliberate act and is NOT part of any job here. Cutting an internal release
+# publishes nothing publicly.
+#
+# These are manual jobs on a BRANCH pipeline rather than tag-triggered: a
+# CI-pushed tag triggers no pipeline, so a tag-triggered job would silently
+# never fire.
+# ---------------------------------------------------------------------------
+.release-base:
+  stage: release
+  image: public.ecr.aws/docker/library/python:3.12-bookworm
+  variables:
+    # Full clone required: version derivation walks history back to the newest
+    # release tag, and tag operations need the tag objects themselves. A
+    # shallow clone silently derives from the wrong base.
+    GIT_DEPTH: "0"
+  before_script:
+    # Pinned to match the version every mechanism here was verified against.
+    - pip install --quiet --disable-pip-version-check 'git-cliff==2.10.1'
+    - git fetch origin --tags --force
+    - git config user.email "ci@$CI_SERVER_HOST"
+    - git config user.name "GitLab CI"
+
+# The pre-flight. Prints the version that would be cut and the exact notes
+# that would be published, and creates nothing.
+#
+# `allow_failure: true` keeps a failed preview from marking the pipeline
+# failed — it creates nothing, so a failure here is informational. `needs: []`
+# so it is reachable without waiting on any earlier stage.
+gitlab:release:preview:
+  extends: .release-base
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_COMMIT_TAG == null
+      when: manual
+      allow_failure: true
+    - when: never
+  needs: []
+  script:
+    - PREVIEW=1 bash scripts/release.sh
+
+# THE RELEASE. Derives, asserts, tags origin, creates the GitLab Release.
+#
+# `allow_failure: false`, unlike the preview: this one creates something
+# irreversible, so a failure must be loud.
+#
+# Ungated on a security scan by design — see the release how-to for
+# the recorded reason. Clicking it when there is nothing to release exits
+# SUCCESSFULLY having created nothing.
+gitlab:release:
+  extends: .release-base
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_COMMIT_TAG == null
+      when: manual
+      allow_failure: false
+    - when: never
+  needs: []
+  script:
+    - bash scripts/release.sh

@@ -1,0 +1,58 @@
+# Accepted occurrences of the network-reaching, destructive, and
+# credential-shaped tokens that checks.conformance.check_network_prose counts in
+# every SKILL.md — the module under internal/tests/unit/src/, run by the
+# unit-tests CI job. The token set itself lives in
+# checks.conformance.clauses.NETWORK_PROSE_PATTERNS and nowhere else; this file
+# records only how many occurrences of it the repository currently accepts, and
+# why.
+#
+# FORMAT  <path> <token> <count>
+#
+#   path   the skill body, relative to this file's own directory
+#   token  the token as written in the script's set. A token containing a space
+#          (`rm -rf`) is written literally: the path is the first field, the
+#          count the last, the token everything between.
+#   count  occurrences accepted in that body for that token
+#
+# Blank lines and everything from a `#` to end of line are ignored. A pair with
+# no record here is accepted zero times, so a token appearing in a body the file
+# does not mention fails the build.
+#
+# ADDING AN ENTRY. The check fails with the body, the token, the count it found,
+# the count accepted, and every matching line. If the occurrence belongs in the
+# skill, add a record with the measured count and, above it, a comment saying
+# what the occurrence is and why it is acceptable. State the substance, not the
+# fact of acceptance: a reviewer reading "curl 2" learns nothing, while a
+# reviewer reading why those two occurrences are prohibitions can tell at a
+# glance whether a third one is of the same character. Record no line numbers —
+# prose in this repository is hand-wrapped and they move for cosmetic edits;
+# quote or paraphrase the occurrence instead, which is also what makes a later
+# substitution at the same count conspicuous.
+#
+# Every count here must EQUAL the occurrences present in the body it names, not
+# merely be greater than or equal to them. The check fails only on an increase,
+# so an over-stated count is invisible and silently grants one future occurrence
+# acceptance without review.
+#
+# WHAT A RECORD HERE DOES NOT MEAN. Every occurrence below is a sentence or a
+# declaration that FORBIDS the behaviour its token denotes, and no token match
+# can tell "never run curl" from "run curl". A record is not evidence that the
+# occurrence is safe; it is evidence that a human looked at it once.
+# docs/internal/explanation/network-prose-gate.md has the rest.
+
+# Two renderings of the example constraint `- No eval()`, one confirmed and one
+# inferred, in the passage explaining how the skill treats a constraint the plan
+# declares. Both are prohibitions the agent is told to honour, and the skill
+# neither evaluates nor emits code from them.
+research/ai-implement/SKILL.md eval 2
+
+# Two prohibitions of arbitrary HTTP in the merged ai-release body, both about
+# denying it rather than doing it. One is the `Bash(curl:*)` entry in
+# `disallowed-tools`, which the tool-declaration check above parses as a token
+# list, so that occurrence is machine-verified to be a denial and not prose. The
+# other is the sentence in the lead paragraph stating that the forge CLI and
+# arbitrary HTTP are denied to the skill, so a promotion can only happen through
+# the installed script or the job that runs it. This body configures a publish
+# path and never performs one; a third occurrence would be the first that could
+# be an instruction to fetch something, and belongs under review.
+semantic-release/ai-release/SKILL.md curl 2
