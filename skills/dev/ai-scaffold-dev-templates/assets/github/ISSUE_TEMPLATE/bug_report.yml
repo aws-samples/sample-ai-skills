@@ -1,0 +1,59 @@
+# Source: The Good Docs Project — Bug report template, tag v1.6.0
+# https://gitlab.com/tgdp/templates/-/tree/v1.6.0/bug-report
+# License: MIT No Attribution (MIT-0). Adapted: rendered as a GitHub issue form,
+# the writing instructions moved into each field's description, the placeholder
+# lists removed so every field starts empty, and the Title section carried by
+# the form's own title field.
+name: Bug report
+description: Report something the project does that it should not.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Title: describe the problem, the action, and the location, in 50 to 80 characters, using the key words someone searching for this bug would type. Report one bug per issue, and check the existing issues first.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Use this when the title alone cannot summarize the bug, in three or four sentences, as concise as possible.
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: The environment you met the bug in — the product version, the browser, the installed packages and their versions, the operating system, the device model, and the connection details, as far as each applies.
+    validations:
+      required: true
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to reproduce
+      description: An ordered list of the steps that led to the bug. Include any observation of relevance, such as unexpected output, a visual glitch, or a step that took unusually long.
+    validations:
+      required: true
+  - type: textarea
+    id: observed-behavior
+    attributes:
+      label: Observed behavior
+      description: What happened when you took the steps above. Describe the result, and leave out any guess about its cause.
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: What you expected the steps to produce.
+  - type: textarea
+    id: proof
+    attributes:
+      label: Proof
+      description: Logs, screenshots, or malformed output that show the bug.
+  - type: textarea
+    id: test-data
+    attributes:
+      label: Test data
+      description: If the bug appears only with specific data, attach that data. Redact anything sensitive, then confirm the redacted data still causes the bug with the same steps.
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Anything else needed to understand the bug, such as the conditions it appears under or other processes running at the time. The project team may ask for more detail after you submit the report.

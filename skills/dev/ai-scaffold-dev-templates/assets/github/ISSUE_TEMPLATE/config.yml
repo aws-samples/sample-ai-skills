@@ -1,0 +1,8 @@
+# Source: written in the ai-skills repository for its ai-scaffold-dev-templates
+# skill. Not derived from a published template.
+# License: MIT No Attribution (MIT-0).
+#
+# Blank issues stay available for anything neither form covers. To send a kind
+# of request elsewhere, add a `contact_links` list of entries, each with a
+# `name`, a `url`, and an `about`.
+blank_issues_enabled: true

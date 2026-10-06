@@ -25,7 +25,7 @@ other.
 
 | Part | Source | Contents |
 |---|---|---|
-| Pipeline artifacts | `output_path` from `.context/README.md` (default `docs/working`) and the resolved feature folder | Exactly three paths: `<feature-folder>/README.md`, `<feature-folder>/plan.md`, `<output_root>/README.md` |
+| Pipeline artifacts | `output_path` from `.ai-skills.toml` (default `docs/working`) and the resolved feature folder | Exactly three paths: `<feature-folder>/README.md`, `<feature-folder>/plan.md`, `<output_root>/README.md` |
 | Source code | The plan's §5 "Files to Modify" | Everything derived by the expansion rules below |
 
 The pipeline-artifact part is closed. No plan content widens it, and it needs no plan parsing — a

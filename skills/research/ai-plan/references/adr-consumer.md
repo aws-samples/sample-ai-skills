@@ -60,4 +60,4 @@ Name the record **by filename** in every warning and every stop — dated record
 
 ## What this extract omits
 
-The record-creation rule (§11's CREATION branch, `/ai-adr`'s first-run behavior, log initialization) is deliberately excluded. No skill in this domain creates, edits, moves, or deletes a decision record — each reads a status and nothing else.
+The record-creation rule (§11's CREATION branch, the record writer's first-run behavior, log initialization) is deliberately excluded. No skill in this domain creates, edits, moves, or deletes a decision record — each reads a status and nothing else.

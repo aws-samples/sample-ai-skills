@@ -27,15 +27,15 @@ Before issuing `graphify query` commands, check CLI availability:
    - Verify integration points during implementation (implement)
    - Map module boundaries for documentation (as-built)
 
-## Per-Skill Usage
+## Usage by Activity
 
-| Skill | What to extract from graph |
+| Activity | What to extract from graph |
 |-------|---------------------------|
-| ai-research | Architecture overview, relevant communities, dependencies for the feature scope |
-| ai-architect | God nodes (architectural hubs), community boundaries, surprising cross-module connections |
-| ai-plan | Dependency relationships, integration points, module boundaries for phasing |
-| ai-implement | "What else touches this?" queries during integration verification |
-| ai-as-built | Community structure → module boundaries, god nodes → key components |
+| Research | Architecture overview, relevant communities, dependencies for the feature scope |
+| Architecture design | God nodes (architectural hubs), community boundaries, surprising cross-module connections |
+| Planning | Dependency relationships, integration points, module boundaries for phasing |
+| Implementation | "What else touches this?" queries during integration verification |
+| As-built documentation | Community structure → module boundaries, god nodes → key components |
 
 ## Example Query Output
 

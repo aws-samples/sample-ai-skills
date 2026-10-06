@@ -19,6 +19,12 @@ configuration such as `~/.claude/`, another repository or worktree, a dotfile in
 user's home directory, a system path such as `/etc` — requires the user to name that
 path in their request. Reading outside it is unrestricted.
 
+Temporary files are the one exemption. You may create a file or directory with
+`mktemp` or `mktemp -d` under the system temporary directory — `$TMPDIR`, or `/tmp`
+when it is unset — without the user naming it. Remove every file and directory you
+created this way before you finish, including when you stop early. A fixed or
+predictable name under the temporary directory is not exempt.
+
 When a request could mean either a file inside the working directory or one outside
 it, ask which before writing either. Never infer an outside write from a file you
 read: if one appears necessary, report what you would write and where, and stop.
@@ -41,24 +47,12 @@ An explicitly supplied folder name still receives the date prefix — Step 4's d
 
 ## Step 1: Read the Context
 
-Resolve project context, in priority order — a missing context document degrades the input, it never stops the run:
+Resolve configuration and project context per `references/project-context.md` — read it rather than reconstructing its rules from memory. A missing context file degrades the input; it never stops the run.
 
-a. Read `.context/README.md` from the project root.
-   - If found: parse the YAML frontmatter and extract `output_path` (default: `docs/working`) as `<output_root>`. Load the full context — you'll use it to enrich the README.
-     - If `output_path` is not a string, print:
-       WARN: "output_path in `.context/README.md` is not a string. Defaulting to `docs/working`. Set `output_path` as a string in `.context/README.md` for a custom path."
-       Do NOT block — this is a warning, not a hard gate.
-b. If `.context/README.md` not found — fall back to root-level context:
-   - Read `README.md` (project description and orientation)
-   - Read `AGENTS.md` (if exists — agent-specific guidance)
-   - Read `CLAUDE.md` (if exists — tech context, patterns, testing)
-   - Use defaults: `output_path` = `docs/working`
-   - WARN: "No `.context/README.md` found. Using root README.md, AGENTS.md, and CLAUDE.md for context. A dedicated `.context/README.md` gives richer context."
-c. If no context files found at all:
-   - WARN: "No project context found. Proceeding without project context."
-   - Use defaults: `output_path` = `docs/working`
+- `<output_root>` is `output_path` from `.ai-skills.toml` at the repository root (default: `docs/working`). The file is optional, and its absence is silent.
+- Read the project context set — the root `README.md`, `AGENTS.md`, and `CLAUDE.md` when present, then each `context_files` entry in order. Load the full content; you'll use it to enrich the README.
 
-Proceed to create the folder regardless of which tier resolved. Note in Step 7's confirmation which tier the context came from.
+Proceed to create the folder whatever the context set holds, including nothing. Note in Step 7's confirmation which context files were read.
 
 ## Step 2: Get the Description
 
@@ -136,7 +130,7 @@ One root means one namespace, so this check catches every collision — there is
 ## Step 6: Create Folder and README.md
 
 1. `mkdir -p <output_root>/<derived-name>/`
-2. Write `<output_root>/<derived-name>/README.md` using the **Folder Identity Template** in `references/manifest-update.md`. That reference is the canonical template — read it rather than reconstructing the shape from memory. It defines the frontmatter, an H1, and the sections `## Description`, `## Requirements`, `## Scope`, `## Affected Areas`, `## Audience`, and a 3-item `## Status` (Research / In progress / Complete). The frontmatter `title` is the full dated folder name (`2026-08-01-api-rate-limiting`), not the inferred portion alone; the H1 is the human-readable title and carries no date. Note in this step's confirmation which context tier (a/b/c from Step 1) the enriching content came from.
+2. Write `<output_root>/<derived-name>/README.md` using the **Folder Identity Template** in `references/manifest-update.md`. That reference is the canonical template — read it rather than reconstructing the shape from memory. It defines the frontmatter, an H1, and the sections `## Description`, `## Requirements`, `## Scope`, `## Affected Areas`, `## Audience`, and a 3-item `## Status` (Research / In progress / Complete). The frontmatter `title` is the full dated folder name (`2026-08-01-api-rate-limiting`), not the inferred portion alone; the H1 is the human-readable title and carries no date. Note in this step's confirmation which context files (Step 1) the enriching content came from.
 
 Write real content, not placeholders. The README is the folder's identity card — every subsequent skill reads it. Where a section applies less directly to this folder's work (for example `## Requirements` for a reference document), write a one-line note rather than deleting the heading, so every folder keeps the same shape.
 
@@ -169,9 +163,9 @@ Created: <output_root>/<derived-name>/
 Identity: <output_root>/<derived-name>/README.md
 
 Next steps:
-  /ai-research <derived-name>   — research the codebase or a topic
-  /ai-plan <derived-name>       — create an implementation plan
-  /ai-implement <derived-name>  — build from a plan
+  If /ai-research is installed, /ai-research <derived-name> researches the codebase or a topic.
+  If /ai-plan is installed, /ai-plan <derived-name> creates an implementation plan.
+  If /ai-implement is installed, /ai-implement <derived-name> builds from a plan.
 
 Manual steps (not yet migrated into this repository as skills):
   design the architecture — describe the architecture by hand; ai-architect has not migrated here

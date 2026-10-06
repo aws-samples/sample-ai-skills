@@ -1,0 +1,30 @@
+# pnpm refuses to finish an install while a dependency's install script is
+# undecided: it exits with ERR_PNPM_IGNORED_BUILDS and names the package. These
+# three are the ones this site's dependencies bring, and none of them is needed
+# to build the site, so each is decided `false` — the script does not run. A
+# dependency added later that ships a script fails the install the same way,
+# naming it, until someone decides it here.
+allowBuilds:
+  '@swc/core': false
+  core-js: false
+  core-js-pure: false
+# Three transitive dependencies resolve, on a fresh install, to versions with
+# published advisories. Each is pinned forward here; none is a direct
+# dependency, so there is no range of this site's own to raise instead. Caret
+# rather than `>=` where the fix is inside a major, so a later install cannot
+# carry one across a major unreviewed.
+overrides:
+  # serialize-javascript <=7.0.2: RCE via RegExp.flags / Date.prototype.toISOString()
+  # (GHSA-5c6j-r48x-rmvq), and CPU exhaustion via crafted array-like objects
+  # (GHSA-qj8w-gfj5-8c6v). Via @docusaurus/core → copy-webpack-plugin and
+  # css-minimizer-webpack-plugin. Build-time only; not in the site's bundle.
+  serialize-javascript: '>=7.0.3'
+  # lodash-es <4.17.24 (GHSA-r5fr-rjxr-66jc, GHSA-f23m-r3pf-42rh). Via
+  # @docusaurus/theme-mermaid → mermaid → chevrotain, which pins it exactly.
+  # IN THE CLIENT BUNDLE: chevrotain is mermaid's diagram parser.
+  lodash-es: '^4.17.24'
+  # uuid <11.1.1 (GHSA-w5hq-g745-h8pq). Via webpack-dev-server → sockjs, which
+  # declares `^8.3.2`, so the fix is a major. Scoped to sockjs so mermaid's own
+  # uuid is untouched; 11 because sockjs `require()`s it and 11 still ships
+  # CommonJS. Only `docusaurus start` loads it. Not in the build or the bundle.
+  'sockjs>uuid': '^11.1.1'

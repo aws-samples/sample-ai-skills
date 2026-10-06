@@ -46,8 +46,8 @@
 # neither evaluates nor emits code from them.
 research/ai-implement/SKILL.md eval 2
 
-# Two prohibitions of arbitrary HTTP in the merged ai-release body, both about
-# denying it rather than doing it. One is the `Bash(curl:*)` entry in
+# Two prohibitions of arbitrary HTTP in the merged ai-scaffold-release body,
+# both about denying it rather than doing it. One is the `Bash(curl:*)` entry in
 # `disallowed-tools`, which the tool-declaration check above parses as a token
 # list, so that occurrence is machine-verified to be a denial and not prose. The
 # other is the sentence in the lead paragraph stating that the forge CLI and
@@ -55,4 +55,4 @@ research/ai-implement/SKILL.md eval 2
 # the installed script or the job that runs it. This body configures a publish
 # path and never performs one; a third occurrence would be the first that could
 # be an instruction to fetch something, and belongs under review.
-semantic-release/ai-release/SKILL.md curl 2
+release/ai-scaffold-release/SKILL.md curl 2

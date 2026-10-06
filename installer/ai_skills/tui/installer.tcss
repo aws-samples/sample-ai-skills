@@ -1,0 +1,238 @@
+/*
+ * The installer's styling. Colours are named only through theme variables;
+ * the palette itself is in theme.py, and test_appearance.py fails on a
+ * literal colour here.
+ */
+
+Screen {
+    padding: 1 2;
+}
+
+/* banner.py colours the text; `solid` has rich-pyfiglet's SQUARE corners. */
+#banner {
+    border: solid $banner-border;
+    width: auto;
+    padding: 0 1;
+}
+
+#version {
+    margin-bottom: 1;
+}
+
+.prompt {
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+.domain {
+    text-style: bold;
+    margin-top: 1;
+}
+
+SelectionList {
+    height: auto;
+    max-height: 12;
+}
+
+/* PANES */
+
+/* A focused list tints its own fill by default; here the border shows focus. */
+#agents,
+#skills,
+#description,
+#scope,
+#plan,
+#result {
+    border: round $panel;
+    border-title-color: $panel;
+    padding: 0 1;
+    background-tint: $foreground 0%;
+}
+
+/* #description is a Static and never takes focus, so it stays $panel. */
+#agents:focus-within,
+#skills:focus-within,
+#scope:focus-within,
+#plan:focus-within,
+#result:focus-within {
+    border: round $primary;
+    border-title-color: $primary;
+}
+
+/* One border round the whole column, not one per domain's list. */
+#skills SelectionList {
+    border: none;
+    padding: 0;
+    background-tint: $foreground 0%;
+}
+
+#skills-row {
+    height: 1fr;
+}
+
+#skills {
+    width: 1fr;
+}
+
+#description {
+    width: 1fr;
+    margin-left: 1;
+}
+
+#plan,
+#result {
+    height: 1fr;
+}
+
+/* TOGGLES */
+
+/*
+ * widgets.py draws the state in the glyph; these colour it and drop the
+ * $panel pill behind it. The highlighted classes match the plain ones, so the
+ * row cursor alone shows the highlight. #scope outranks RadioSet's own rules.
+ */
+SelectionList > .selection-list--button,
+SelectionList > .selection-list--button-highlighted {
+    color: $panel;
+    background: $background;
+}
+
+SelectionList > .selection-list--button-selected,
+SelectionList > .selection-list--button-selected-highlighted {
+    color: $primary;
+    background: $background;
+}
+
+#scope > RadioButton > .toggle--button {
+    color: $panel;
+    background: $background;
+}
+
+#scope > RadioButton.-on > .toggle--button {
+    color: $primary;
+}
+
+/* BUTTONS */
+
+.buttons {
+    height: auto;
+    margin-top: 1;
+}
+
+.buttons Button {
+    margin-right: 2;
+}
+
+/* Styled by the variant each button already declares, not by its id. */
+Button {
+    height: 1;
+    min-width: 0;
+    border: none;
+    background: $background;
+    color: $foreground;
+}
+
+Button:hover {
+    color: $secondary;
+}
+
+/* A one-line button has no border to highlight, so focus reverses it. */
+Button:focus {
+    text-style: reverse;
+}
+
+Button.-primary {
+    background: $primary;
+    color: $background;
+}
+
+Button.-error {
+    background: $error;
+    color: $background;
+}
+
+Button.-primary:hover,
+Button.-error:hover {
+    background: $secondary;
+    color: $background;
+}
+
+/* CONFLICT MODAL */
+
+ConflictScreen {
+    align: center middle;
+}
+
+#conflict {
+    width: 80%;
+    height: auto;
+    border: round $warning;
+    border-title-color: $warning;
+    padding: 1 2;
+    background: $background;
+}
+
+/* NOTIFICATIONS */
+
+Toast {
+    width: auto;
+    background: $background;
+    color: $text;
+    border-right: none;
+    border-left: wide $primary;
+    padding: 0 1;
+    margin: 0 0 1 0;
+}
+
+Toast.-information {
+    border-left: wide $primary;
+}
+
+Toast.-warning {
+    border-left: wide $warning;
+}
+
+Toast.-error {
+    border-left: wide $error;
+}
+
+Toast .toast--title {
+    color: $primary;
+}
+
+/* FOOTER */
+
+Footer {
+    background: $background;
+    color: $secondary;
+}
+
+FooterKey {
+    background: $background;
+    color: $primary;
+
+    .footer-key--key {
+        color: $secondary;
+        background: $background;
+        text-style: bold;
+    }
+
+    .footer-key--description {
+        padding: 0 1 0 0;
+        color: $primary;
+        background: $background;
+    }
+
+    /* Textual renders the ^p palette key compact; keep its space before the description. */
+    &.-compact .footer-key--description {
+        padding: 0 0 0 1;
+    }
+
+    &:hover {
+        background: $boost;
+
+        .footer-key--key {
+            background: $boost;
+        }
+    }
+}

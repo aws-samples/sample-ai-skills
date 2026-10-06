@@ -6,11 +6,11 @@ Shared instructions for updating the working manifest README after skill executi
 
 After updating the folder's status, update the manifest README:
 
-1. Resolve `<output_root>` from the `output_path` scalar in `.context/README.md` (default: `docs/working`). If the parsed value is not a string, print:
+1. Resolve `<output_root>` from the `output_path` key of `.ai-skills.toml` at the repository root (default: `docs/working`), applying `project-context.md` for an absent file, an unparseable one, and a value of the wrong type.
 
-   WARN: "output_path in `.context/README.md` is not a string. Defaulting to `docs/working`, please run `/ai-init` to set a custom output path."
+   That reference ships beside this one in every skill that resolves a working root. A skill that does not resolve one skips this step.
 
-   Do NOT block — this is a warning, not a hard gate. One root holds every folder: code features and documents alike.
+   Do NOT block — an unusable value warns and falls back to the default; it is not a hard gate. One root holds every folder: code features and documents alike.
 
 2. Read the existing manifest at `<output_root>/README.md`
    - If it does not exist, create it with the template below
@@ -96,7 +96,8 @@ b2. ARCHIVE PROBE — before auto-creating, check `<output_root>/.archive/` for 
     Never auto-create silently over an archived name.
 c. AUTO-CREATE — only when neither (a) nor (b) matched, create
    `<output_root>/<today>-<typed-name>/`. Skills that do not create folders stop here and
-   suggest `/ai-create` instead.
+   name the missing folder, which the user can create with the Folder Identity Template
+   below. If /ai-create is installed, it can create the folder.
 ```
 
 Step (a) first means a user who types the full dated name takes the cheapest path and never reaches the glob. Step (c) last preserves the forgiving auto-create the pipeline relies on — it just stops firing on a name that already exists under a date.
@@ -105,11 +106,11 @@ Step (b) is the step that carries the feature. Without it, a lookup miss on a sh
 
 The multiple-match branch asks rather than warning-and-continuing, which is the one place the pipeline blocks instead of degrading. Writing an artifact into the wrong feature's folder is not recoverable by reading a warning afterward.
 
-Step (b2) exists because `/ai-archive` manufactures lookup misses. A folder it retires still holds the `research.md` or `plan.md` a later run needs, but the glob in step (b) enumerates `<output_root>/` only and never descends into `.archive/` — so without the probe, step (c) creates an empty twin over an archived name and reports success, which is the same failure step (b) was added to prevent. The probe hands the user a restore command rather than running one: un-archiving is deliberately not automated, so the decision to bring a folder back stays theirs.
+Step (b2) exists because archiving manufactures lookup misses. An archived folder still holds the `research.md` or `plan.md` a later run needs, but the glob in step (b) enumerates `<output_root>/` only and never descends into `.archive/` — so without the probe, step (c) creates an empty twin over an archived name and reports success, which is the same failure step (b) was added to prevent. The probe hands the user a restore command rather than running one: un-archiving is deliberately not automated, so the decision to bring a folder back stays theirs.
 
 ## Folder Identity Template
 
-The single README that `/ai-create` writes and every auto-creating skill reproduces. There is no code-vs-doc variant, so nothing downstream needs to detect which kind of work a folder holds.
+The single README that every skill creating a working folder writes. There is no code-vs-doc variant, so nothing downstream needs to detect which kind of work a folder holds.
 
 The frontmatter `title` is the full dated folder name (`2026-08-01-api-rate-limiting`), matching the directory exactly. The H1 is the human-readable title and carries no date.
 

@@ -1,6 +1,6 @@
 ---
 title: "Explanation"
-sidebar_label: "Explanation"
+sidebar_label: "Overview"
 sidebar_position: 1
 ---
 
@@ -12,6 +12,7 @@ understanding rather than doing: read them when you want to know why a conventio
 exists, or when a design decision looks arbitrary and you want the reasoning.
 Nothing here is needed to use the skills.
 
-No explanation pages are published yet. The reasoning that exists today is
-maintainer-facing — it is about this repository's own gates and boundaries rather
-than about using a skill — so it is not part of this tree.
+- [Skill Naming](skill-naming.md) — the rule every skill name follows, and why each
+  domain's reference source directory starts with a dot.
+- [Tool Grant Bounds](tool-grant-bounds.md) — what a skill's tool declarations do
+  and do not bound, how that was established, and the settings a consumer can add.

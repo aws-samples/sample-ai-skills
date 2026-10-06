@@ -1,0 +1,61 @@
+[project]
+name = "ai-skills"
+description = "Install this repository's skills into a coding agent's skills directory."
+readme = "README.md"
+license = "MIT-0"
+# `>=3.14,<3.15` is the exact-minor pin
+# internal/adr/2026-09-25-standardize-on-python-3-14.md decides, and
+# internal/tests/unit/src/checks/interpreter_pin.py fails on any other value.
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "textual>=8.2.8",
+    # The adapters filter frontmatter line by line and then parse the result, so
+    # a filtered SKILL.md that no longer parses is refused rather than installed.
+    "pyyaml>=6.0.3",
+]
+# From the newest `v*` tag, the tags internal/scripts/release_cli.py creates.
+dynamic = ["version"]
+
+[project.scripts]
+ai-skills = "ai_skills.__main__:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    # The build backend, repeated from [build-system] so uv.lock hash-fixes it.
+    # An isolated build fetches whatever PyPI serves at job time; `make
+    # installer-tests` installs these from the lock first and then builds the
+    # project with --no-build-isolation against them.
+    # `editables` is what hatchling asks for when building the editable install.
+    "hatchling>=1.32.4",
+    "hatch-vcs>=0.5.0",
+    "editables>=0.5",
+]
+
+[build-system]
+requires = ["hatchling>=1.32.4", "hatch-vcs>=0.5.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+# The package lives in installer/ so the top-level directory states its purpose,
+# and is installed as `ai_skills`.
+[tool.hatch.build.targets.wheel]
+packages = ["installer/ai_skills"]
+
+# The catalog travels inside the wheel, so `uvx --from git+…` needs no clone.
+# catalog.py reads this copy first and falls back to the repository's skills/.
+[tool.hatch.build.targets.wheel.force-include]
+"skills" = "ai_skills/_skills"
+
+# Anchored with `/`: the patterns are gitignore-style, so a bare `skills` would
+# also match docs/skills/ and .claude/skills/, and a bare `README.md` every
+# README in the tree.
+[tool.hatch.build.targets.sdist]
+include = ["/installer", "/skills", "/README.md", "/LICENSE"]
+
+# A bare `uv run pytest` from the root collects the installer suite and nothing
+# else. internal/tests/unit is a separate project with its own environment.
+[tool.pytest.ini_options]
+testpaths = ["internal/tests/installer"]

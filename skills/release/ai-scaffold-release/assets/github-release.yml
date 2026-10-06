@@ -1,0 +1,65 @@
+# GitHub Actions counterpart of assets/gitlab-ci-release.yml, installed
+# instead of it when the probed forge topology is GitHub rather than GitLab.
+#
+# `workflow_dispatch` is GitHub's manual-trigger primitive — the equivalent of
+# the GitLab job's `when: manual`. There is no push-triggered or
+# schedule-triggered release here for the same reason the GitLab job is
+# branch-triggered rather than tag-triggered: a release tag this workflow
+# itself pushes triggers no further run, so a tag-triggered job would silently
+# never fire, and releasing must stay a deliberate click either way.
+#
+# Uses the GitHub CLI's `gh release create` rather than a bundled counterpart to
+# gitlab_release_cli.py: `gh` ships preinstalled on GitHub-hosted runners and
+# reads a release's notes from its tag, so a hand-rolled REST call would
+# duplicate what the CLI does natively — unlike GitLab, where release-cli is not
+# present in the job image scripts/release_cli.py runs under.
+#
+# THE NOTES COME FROM THE PUSHED TAG, never from a file. release_cli.py writes
+# them to a private temporary file it removes before it exits, and the tag
+# annotation it pushed is the same notes byte for byte, so `--notes-from-tag`
+# publishes exactly what was tagged. The flag is in `gh` 2.79.0 and later.
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      preview:
+        description: "Preview only — creates nothing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+
+      # uv runs the release script, provisioning the Python and git-cliff
+      # versions it declares.
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.19"
+
+      - name: Configure git identity
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+
+      - name: Preview
+        if: ${{ github.event.inputs.preview == 'true' }}
+        run: PREVIEW=1 uv run scripts/release_cli.py
+
+      - name: Release
+        if: ${{ github.event.inputs.preview != 'true' }}
+        env:
+          CONFIRM_VERSION: ${{ vars.CONFIRM_VERSION }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          uv run scripts/release_cli.py
+          TAG=$(git describe --tags --abbrev=0 --match='v[0-9]*.[0-9]*.[0-9]*')
+          gh release create "$TAG" --notes-from-tag

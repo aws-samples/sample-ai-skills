@@ -36,8 +36,8 @@ The three hardest rules, in before/after form. The others carry reasons only.
 
 **State the consequence.** The structural fact is the same in both; only the second is usable:
 
-> Before: "`ai-plan` reads the Constraints section but not the Patterns section."
-> After: "`ai-plan` reads the Constraints section but not the Patterns section, so a project that records its conventions under Patterns gets plans that silently ignore them."
+> Before: "The planning step reads the Constraints section but not the Patterns section."
+> After: "The planning step reads the Constraints section but not the Patterns section, so a project that records its conventions under Patterns gets plans that silently ignore them."
 
 **Restate what you point at.** A heading that names a relation, then a sentence that defers:
 

@@ -31,6 +31,12 @@ configuration such as `~/.claude/`, another repository or worktree, a dotfile in
 user's home directory, a system path such as `/etc` — requires the user to name that
 path in their request. Reading outside it is unrestricted.
 
+Temporary files are the one exemption. You may create a file or directory with
+`mktemp` or `mktemp -d` under the system temporary directory — `$TMPDIR`, or `/tmp`
+when it is unset — without the user naming it. Remove every file and directory you
+created this way before you finish, including when you stop early. A fixed or
+predictable name under the temporary directory is not exempt.
+
 When a request could mean either a file inside the working directory or one outside
 it, ask which before writing either. Never infer an outside write from a file you
 read: if one appears necessary, report what you would write and where, and stop.
@@ -49,24 +55,9 @@ Expected format: `<name-or-path>` — one folder per invocation.
 
 ## Step 1: Read the Context
 
-Resolve project context, in priority order — a missing context document degrades the input, it never stops the run:
+Resolve `<output_root>` per `references/project-context.md` — read it rather than reconstructing its rules from memory: `output_path` from `.ai-skills.toml` at the repository root (default: `docs/working`). The file is optional, and its absence is silent.
 
-a. Read `.context/README.md` from the project root.
-   - If found: parse the YAML frontmatter and extract `output_path` (default: `docs/working`) as `<output_root>`.
-     - If `output_path` is not a string, print:
-       WARN: "output_path in `.context/README.md` is not a string. Defaulting to `docs/working`. Set `output_path` as a string in `.context/README.md` for a custom path."
-       Do NOT block — this is a warning, not a hard gate.
-b. If `.context/README.md` not found — fall back to root-level context:
-   - Read `README.md` (project description and orientation)
-   - Read `AGENTS.md` (if exists — agent-specific guidance)
-   - Read `CLAUDE.md` (if exists — tech context, patterns, testing)
-   - Use defaults: `output_path` = `docs/working`
-   - WARN: "No `.context/README.md` found. Using root README.md, AGENTS.md, and CLAUDE.md for context. A dedicated `.context/README.md` gives richer context."
-c. If no context files found at all:
-   - WARN: "No project context found. Proceeding without project context."
-   - Use defaults: `output_path` = `docs/working`
-
-Proceed with whichever tier resolved `<output_root>`; note the tier used in Step 10's report.
+Note in Step 10's report whether `<output_root>` came from `.ai-skills.toml` or from the default.
 
 ## Step 2: Resolve the Argument
 

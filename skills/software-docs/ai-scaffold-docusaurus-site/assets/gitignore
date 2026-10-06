@@ -1,0 +1,6 @@
+# Dependencies, the production build, and the cache Docusaurus generates. Each
+# is anchored to this site directory, so a page directory named `build` in the
+# content tree is not ignored with it.
+/node_modules/
+/build/
+/.docusaurus/

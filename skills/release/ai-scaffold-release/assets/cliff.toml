@@ -1,0 +1,86 @@
+# Release notes are generated onto the ANNOTATED TAG and the forge Release
+# object — there is no committed changelog file. Every generating call passes
+# `--strip all`, which removes `header` and `footer`, so neither is defined
+# here: a template that is stripped from every output is a template nobody
+# reads.
+#
+# The FULL commit body is rendered (not just its lead paragraph), because
+# notes living only in a tag annotation and a Release description are the
+# entire record — there is no committed changelog to hold the rest, so
+# trimming the body here would make it unrecoverable rather than merely
+# summarized.
+
+[changelog]
+body = """
+{% if version -%}
+## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else -%}
+## [Unreleased]
+{% endif -%}
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | upper_first }}
+{% for commit in commits -%}
+- {% if commit.scope %}**{{ commit.scope }}** — {% endif %}\
+{{ commit.message | split(pat="\n") | first | upper_first | trim }}
+{%- if commit.body %}
+{% set indented = commit.body | trim | replace(from="\n", to="\n  ") %}
+  {{ indented }}
+{%- endif %}
+{% endfor %}
+{% endfor -%}
+"""
+
+# No footer. Per-version compare links are deliberately not generated:
+#
+#   1. Under selective publication, gaps in the public tag sequence are
+#      routine, so a link between two versions where only one was published
+#      is a 404 by construction.
+#   2. Hardcoding a forge URL here makes any copy of this config emit links to
+#      the original project's repository.
+#
+# Tags and forge Release objects are the durable, navigable record.
+
+# MUST stay false. `trim = true` strips leading whitespace from every rendered
+# line, which flattens the two-space indent the body block above depends on —
+# turning a commit body's sub-bullets into siblings of their parent bullet and
+# breaking Markdown nesting. It fails silently: output looks fine to git-cliff,
+# and only renders wrong. Verified against git-cliff 2.10.1.
+trim = false
+
+[git]
+conventional_commits = true
+filter_unconventional = false
+split_commits = false
+sort_commits = "oldest"
+# Strict semver only. A permissive pattern lets a stray prerelease-shaped tag
+# (v0.9.9-rc1) become the derivation base — verified.
+tag_pattern = "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+protect_breaking_commits = false
+commit_parsers = [
+    { message = "^feat", group = "Added" },
+    { message = "^fix", group = "Fixed" },
+    # `^docs?`, not `^docs`: this project's convention admits both `doc:` and
+    # `docs:`. Under the plural-only form a `doc:` commit would derive a
+    # version change while appearing in no section — a silent omission rather
+    # than a refusal.
+    { message = "^docs?", group = "Documentation" },
+    { message = "^perf", group = "Performance" },
+    { message = "^refactor", group = "Changed" },
+    { message = "^ci", group = "CI/Build" },
+    { message = "^build", group = "CI/Build" },
+    { message = "^revert", group = "Reverted" },
+    { message = "^style", skip = true },
+    { message = "^test", skip = true },
+    { message = "^chore", skip = true },
+]
+
+[bump]
+# Pre-1.0 guard: a `feat!:` commit yields 0.x+1 rather than 1.0.0, so reaching
+# 1.0.0 is not something ordinary derivation can stumble into.
+#
+# INERT once the major is >= 1 — verified: at v1.0.0 a `feat!:` still derives
+# v2.0.0. This is pre-1.0 scaffolding, not a permanent invariant, which is why
+# it is belt and braces rather than the guard. The guard that survives the 1.0
+# transition is the version-shape check in scripts/release_cli.py, which refuses
+# any release raising the major unless CONFIRM_VERSION matches.
+breaking_always_bump_major = false

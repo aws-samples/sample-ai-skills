@@ -1,0 +1,8 @@
+# Source: written in the ai-skills repository for its ai-scaffold-dev-templates
+# skill. Not derived from a published template.
+# License: MIT No Attribution (MIT-0).
+#
+# This repository is a published copy and accepts no issues. This file removes
+# the blank-issue option; turning off Issues in the repository's settings is
+# what stops them entirely.
+blank_issues_enabled: false

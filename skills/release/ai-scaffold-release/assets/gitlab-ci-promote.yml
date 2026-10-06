@@ -1,0 +1,211 @@
+# ---------------------------------------------------------------------------
+# Public promotion. ONE manual job, whose NAME is the documentation.
+#
+#   public:promote   manual. Runs scripts/promote_cli.py. With no CONFIRM_SHA set it
+#                    reports what would ship and pushes nothing; with
+#                    CONFIRM_SHA equal to the tag's object id it force-pushes the
+#                    filtered tree and the tag to the public target. For a GitHub target
+#                    it then runs scripts/github_release_cli.py, which creates the
+#                    GitHub Release a pushed tag does not get on its own.
+#
+# So: click it once to read the report, then click it again with CONFIRM_SHA set
+# as a job variable, to the `tag object:` id the report printed — not the commit
+# id, which the report prints too and the scripts refuse. NO --dry-run FLAG IS PASSED, deliberately — omitting the
+# confirmation is what makes a run a dry run, and a job that passed the flag
+# would make the confirmation unreachable while its absence read as
+# authorization. The operator supplies CONFIRM_SHA at run time through GitLab's
+# "Run job" variable form; nothing here sets it, and nothing should.
+#
+# Manual on a BRANCH pipeline rather than chained off the release job: a
+# CI-pushed tag triggers no pipeline, so a tag-triggered promote job would
+# silently never fire.
+#
+# THIS IS A BASE. It declares no job dependency; see `needs:` below for the
+# one-line edit that adds one, and references/promote-extensions.md for which
+# removed checks belong there rather than in the gate hook.
+#
+# Both scripts run through `uv`, which each form's before_script installs: `uv run`
+# provisions the Python version each declares, which needs network access to
+# python.org's builds on a job's first run.
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# THE CREDENTIAL FORM. Two complete forms follow, and an installed job carries
+# exactly ONE: ai-scaffold-release keeps the form matching PUBLIC_TARGET's
+# host, points `.promote-base`'s `extends:` at it, and deletes the other. Each
+# form carries the job's script with it, so the push credential and the Release
+# step are installed together or not at all.
+#
+#   .promote-form-github  a target on github.com. An HTTPS token, PROMOTE_TOKEN,
+#                         in a credential-helper file, and a second script line,
+#                         scripts/github_release_cli.py, run after the push with
+#                         the tag promote_cli.py resolved. One fine-grained token with
+#                         Contents: read and write authorizes both.
+#   .promote-form-ssh     any other target. A deploy key, PROMOTE_SSH_KEY, over
+#                         SSH, and scripts/promote_cli.py alone. A deploy key cannot
+#                         create a GitHub Release.
+#
+# Both gate the credential on CONFIRM_SHA. An absent CONFIRM_SHA is the dry run,
+# and a dry run pushes nothing — so requiring a credential to reach it was wrong
+# twice over. It made the report unreachable exactly when it is most wanted
+# (before any credential exists, when a builder is checking what WOULD ship), and
+# because this is before_script the job died before promote_cli.py printed a single
+# line, while `allow_failure: false` turned the pipeline red for a read-only
+# check. Gating here also makes the dry run's safety STRUCTURAL rather than a
+# promise: with no credential in the job at all, the run cannot push even if every
+# later refusal were bypassed.
+# ---------------------------------------------------------------------------
+.promote-form-github:
+  before_script:
+    - pip install --quiet --disable-pip-version-check 'uv==0.12.19'
+    - git fetch origin --tags --force
+    - |
+      set -eu
+      # if/else, never `exit 0`: GitLab runs before_script and script in ONE shell,
+      # so an exit here would end the job before either script printed its report.
+      if [ -n "${CONFIRM_SHA:-}" ]; then
+        # PROMOTE_TOKEN: a GitHub fine-grained token with Contents: read and write
+        # on the target repository, set as a MASKED, PROTECTED CI variable. Refused
+        # here rather than left for git to discover: promote_cli.py exports
+        # GIT_TERMINAL_PROMPT=0, so an absent credential otherwise surfaces as a
+        # push failure after the filtered tree and the retag are already built.
+        [ -n "${PROMOTE_TOKEN:-}" ] || { echo "CONFIRM_SHA is set but PROMOTE_TOKEN is not — see the note above .promote-form-github" >&2; exit 1; }
+        # credential.helper store reads a file; the token never appears in a URL
+        # git might echo, in the remote promote_cli.py configures, or in
+        # .promote-target, which is PARSED and never sourced, so a `$PROMOTE_TOKEN`
+        # written into it would be pushed literally. github_release_cli.py reads
+        # PROMOTE_TOKEN from the environment itself.
+        git config --global credential.helper store
+        umask 077
+        printf 'https://x-access-token:%s@github.com\n' "$PROMOTE_TOKEN" > ~/.git-credentials
+      else
+        echo "no CONFIRM_SHA — this is a dry run; no push credential configured, so nothing can be pushed"
+      fi
+  # The Release step runs after the push, in the same job, and resolves the same
+  # tag: neither script is passed one, and each takes the newest strict-semver tag
+  # on origin and requires CONFIRM_SHA to equal its object id. A CONFIRM_SHA for
+  # any other tag therefore refuses rather than promoting that tag. A dry run of
+  # the job is a dry run of both.
+  #
+  # IF THE RELEASE STEP FAILS AFTER THE PUSH, do not re-run this job: its new public
+  # commit would have the pushed one as its parent, so the tag object differs and
+  # the atomic push is refused. github_release_cli.py prints the command that
+  # creates the Release by hand, and is safe to re-run:
+  #
+  #     CONFIRM_SHA=<tag object id> PROMOTE_TOKEN=… uv run scripts/github_release_cli.py <tag>
+  script:
+    - uv run scripts/promote_cli.py
+    - uv run scripts/github_release_cli.py
+
+.promote-form-ssh:
+  before_script:
+    # openssh-client is absent from the python image, and `git` over SSH needs it.
+    - apt-get update -qq && apt-get install -y -qq git openssh-client >/dev/null
+    - pip install --quiet --disable-pip-version-check 'uv==0.12.19'
+    - git fetch origin --tags --force
+    # The host key is fetched for the host the CONFIGURATION names, never for a
+    # hardcoded forge. Hardcoding one is the single least portable line in this
+    # shape: the target may be a second internal forge or a different GitLab
+    # instance, and a promotion to it must not require editing this file.
+    - |
+      set -eu
+      # In this form the gate has a second reason: ssh-keyscan would contact the
+      # PUBLIC TARGET on a run that pushes nothing, and a dry run should touch
+      # nothing outside origin.
+      if [ -z "${CONFIRM_SHA:-}" ]; then
+        echo "no CONFIRM_SHA — this is a dry run; no key installed and no host contacted, so nothing can be pushed"
+        exit 0
+      fi
+      TARGET="$(sed -n 's/^PUBLIC_TARGET=//p' .promote-target | head -1)"
+      [ -n "$TARGET" ] || { echo "no PUBLIC_TARGET in .promote-target" >&2; exit 1; }
+      HOST="$(printf '%s' "$TARGET" | sed -e 's#^[a-zA-Z+]*://##' -e 's#^[^@]*@##' -e 's#[:/].*$##')"
+      # An unparseable target yields an empty HOST, which would make ssh-keyscan a
+      # no-op and leave known_hosts without a key for the target. On its own that
+      # is a refused push rather than a MITM — ssh will not accept an unknown host
+      # non-interactively — but whether it refuses depends on the runner image's
+      # StrictHostKeyChecking default, which an asset installed into an unknown
+      # repository cannot see. Refuse here instead of resting on it.
+      [ -n "$HOST" ] || { echo "could not derive a host from PUBLIC_TARGET: $TARGET" >&2; exit 1; }
+      [ -n "${PROMOTE_SSH_KEY:-}" ] || { echo "CONFIRM_SHA is set but PROMOTE_SSH_KEY is not — see the note at the foot of this file" >&2; exit 1; }
+      mkdir -p ~/.ssh
+      chmod 700 ~/.ssh
+      # ssh-keyscan exits 0 for a host it could not reach, so its status proves
+      # nothing. Collect first and assert the file is non-empty, rather than
+      # appending nothing to known_hosts and continuing.
+      ssh-keyscan -H "$HOST" > /tmp/promote-known-hosts
+      [ -s /tmp/promote-known-hosts ] || { echo "no host key fetched for $HOST" >&2; exit 1; }
+      cat /tmp/promote-known-hosts >> ~/.ssh/known_hosts
+      install -m 600 "$PROMOTE_SSH_KEY" ~/.ssh/id_ed25519
+  script:
+    - uv run scripts/promote_cli.py
+
+.promote-base:
+  # Exactly one of the two forms above; see THE CREDENTIAL FORM.
+  extends: .promote-form-ssh
+  stage: release
+  image: public.ecr.aws/docker/library/python:3.12-bookworm
+  variables:
+    # Full history is required for two reasons that have nothing to do with
+    # ancestry — the base performs NO ancestry or divergence check, so do not
+    # read this as a prerequisite of one:
+    #   1. the TAG OBJECT and its annotation must be present, and the promotion
+    #      reuses that annotation byte for byte;
+    #   2. git's PACK NEGOTIATION otherwise references objects past the shallow
+    #      boundary, which the public remote rejects.
+    GIT_DEPTH: "0"
+
+# THE PROMOTION. allow_failure: false, unlike a preview job — this one can create
+# something on a remote nobody here controls, so a failure must be loud.
+#
+# The trailing `when: never` is not decoration: without it a pipeline shape the
+# rule above does not match falls through to GitLab's default, and the job
+# appears where it was never meant to.
+public:promote:
+  extends: .promote-base
+  rules:
+    # Once per push to the default branch, and never on the tag pipeline a
+    # release may create.
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_COMMIT_TAG == null
+      when: manual
+      allow_failure: false
+    - when: never
+  # THE ENVIRONMENT IS WHAT THE PUSH CREDENTIAL CAN BE SCOPED TO. Set the
+  # credential variable's environment scope to `public` and only a job declaring
+  # that environment receives it, so no other job in the pipeline, and none of
+  # the third-party code those jobs run, holds write access to the public target.
+  # A credential left at the every-environment scope `*` still reaches this job,
+  # unchanged.
+  #
+  # `action: access` grants the environment's variables and records no
+  # deployment. The default, `start`, would record one on every run, dry runs
+  # included, and where outdated deployment jobs are prevented, a newer
+  # pipeline's dry run would then refuse an older pipeline's promotion.
+  #
+  # The environment belongs to this job, whichever credential form it extends,
+  # so neither form declares it.
+  environment:
+    name: public
+    action: access
+  # No dependency by default. To gate the promotion on a scan the pipeline
+  # already runs, this becomes one line:
+  #
+  #     needs: [{ job: secret-detection }]
+  #
+  # If that job is contributed by an INCLUDED COMPONENT rather than declared in
+  # this file, it must be marked optional:
+  #
+  #     needs: [{ job: ash-sast, optional: true }]
+  #
+  # Omitting `optional: true` makes the whole pipeline INVALID — not merely
+  # ungated — in any pipeline where the component is not included, so the failure
+  # is every job refusing to start rather than the promotion running unchecked.
+  needs: []
+  # No `script:` here: it comes from the credential form `.promote-base` extends.
+# ---------------------------------------------------------------------------
+# The SSH form's credential and egress.
+#
+# PROMOTE_SSH_KEY is a FILE-type CI variable holding a deploy key with write
+# access to the public target, and the runner needs port-22 egress to its host.
+# Measuring that egress is a one-job experiment and belongs to whichever change
+# first installs this job; it changes neither scripts/promote_cli.py nor the routing.
+# A target on github.com uses .promote-form-github instead, which needs only 443.
+# ---------------------------------------------------------------------------
