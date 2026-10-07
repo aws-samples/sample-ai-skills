@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640">
+  <!-- Light background -->
+  <rect width="1280" height="640" fill="#F5F5F5"/>
+
+  <!-- Icon - scaled from 128 to 340, vertically centered -->
+  <g transform="translate(70, 150) scale(2.65625)">
+    <defs>
+      <clipPath id="icon-shape">
+        <rect x="4" y="4" width="120" height="120" rx="16" ry="16"/>
+      </clipPath>
+    </defs>
+
+    <g clip-path="url(#icon-shape)">
+      <!-- Background - Squid Ink -->
+      <rect x="4" y="4" width="120" height="120" fill="#232F3E"/>
+
+      <!-- 5 horizon bars, graduated larger to smaller top-down, 3px dividers -->
+      <rect x="4" y="4"   width="120" height="32" fill="#F2C94C"/>
+      <rect x="4" y="39"  width="120" height="26" fill="#E09930"/>
+      <rect x="4" y="68"  width="120" height="22" fill="#C4501A"/>
+      <rect x="4" y="93"  width="120" height="17" fill="#A83520"/>
+      <rect x="4" y="113" width="120" height="11" fill="#4A1808"/>
+    </g>
+  </g>
+
+  <!-- Title -->
+  <text x="460" y="300" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="120" font-weight="700" fill="#1A1A1A" dominant-baseline="middle">ai-skills</text>
+
+  <!-- Byline -->
+  <text x="464" y="385" font-family="system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="36" font-weight="400" fill="#666666" dominant-baseline="middle">accelerate your workflow</text>
+</svg>
